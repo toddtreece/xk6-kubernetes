@@ -21,12 +21,12 @@ import (
 
 // UnstructuredOperations defines generic functions that operate on any kind of Kubernetes object
 type UnstructuredOperations interface {
-	Apply(manifest string) error
-	Create(obj map[string]interface{}) (map[string]interface{}, error)
-	Delete(kind string, name string, namespace string) error
-	Get(kind string, name string, namespace string) (map[string]interface{}, error)
-	List(kind string, namespace string) ([]map[string]interface{}, error)
-	Update(obj map[string]interface{}) (map[string]interface{}, error)
+	Apply(manifest string, options *metav1.ApplyOptions) error
+	Create(obj map[string]interface{}, options *metav1.CreateOptions) (map[string]interface{}, error)
+	Delete(kind string, name string, namespace string, options *metav1.DeleteOptions) error
+	Get(kind string, name string, namespace string, options *metav1.GetOptions) (map[string]interface{}, error)
+	List(kind string, namespace string, options *metav1.ListOptions) ([]map[string]interface{}, error)
+	Update(obj map[string]interface{}, options *metav1.UpdateOptions) (map[string]interface{}, error)
 }
 
 // StructuredOperations defines generic operations that handles runtime objects such as corev1.Pod.
@@ -35,16 +35,16 @@ type UnstructuredOperations interface {
 type StructuredOperations interface {
 	// Create creates a resource described in the runtime object given as input and returns the resource created.
 	// The resource must be passed by value (e.g corev1.Pod) and a value (not a reference) will be returned
-	Create(obj interface{}) (interface{}, error)
+	Create(obj interface{}, options *metav1.CreateOptions) (interface{}, error)
 	// Delete deletes a resource given its kind, name and namespace
-	Delete(kind string, name string, namespace string) error
+	Delete(kind string, name string, namespace string, options *metav1.DeleteOptions) error
 	// Get retrieves a resource into the given placeholder given its kind, name and namespace
-	Get(kind string, name string, namespace string, obj interface{}) error
+	Get(kind string, name string, namespace string, obj interface{}, options *metav1.GetOptions) error
 	// List retrieves a list of resources in the given slice given their kind and namespace
-	List(kind string, namespace string, list interface{}) error
+	List(kind string, namespace string, list interface{}, options *metav1.ListOptions) error
 	// Update updates an existing resource and returns the updated version
 	// The resource must be passed by value (e.g corev1.Pod) and a value (not a reference) will be returned
-	Update(obj interface{}) (interface{}, error)
+	Update(obj interface{}, options *metav1.UpdateOptions) (interface{}, error)
 }
 
 // structured holds the
@@ -107,7 +107,7 @@ func (c *Client) getResource(kind string, namespace string, versions ...string) 
 }
 
 // Apply creates a resource in a kubernetes cluster from a YAML manifest
-func (c *Client) Apply(manifest string) error {
+func (c *Client) Apply(manifest string, options *metav1.ApplyOptions) error {
 	uObj := &unstructured.Unstructured{}
 	_, gvk, err := c.serializer.Decode([]byte(manifest), nil, uObj)
 	if err != nil {
@@ -125,19 +125,23 @@ func (c *Client) Apply(manifest string) error {
 		return fmt.Errorf("failed to get resource: %w", err)
 	}
 
+	if options == nil {
+		options = &metav1.ApplyOptions{}
+	}
+
+	options.FieldManager = "xk6-kubernetes"
+
 	_, err = resource.Apply(
 		c.ctx,
 		name,
 		uObj,
-		metav1.ApplyOptions{
-			FieldManager: "xk6-kubernetes",
-		},
+		*options,
 	)
 	return err
 }
 
 // Create creates a resource in a kubernetes cluster from an object with its specification
-func (c *Client) Create(obj map[string]interface{}) (map[string]interface{}, error) {
+func (c *Client) Create(obj map[string]interface{}, options *metav1.CreateOptions) (map[string]interface{}, error) {
 	uObj := &unstructured.Unstructured{
 		Object: obj,
 	}
@@ -153,10 +157,14 @@ func (c *Client) Create(obj map[string]interface{}) (map[string]interface{}, err
 		return nil, err
 	}
 
+	if options == nil {
+		options = &metav1.CreateOptions{}
+	}
+
 	resp, err := resource.Create(
 		c.ctx,
 		uObj,
-		metav1.CreateOptions{},
+		*options,
 	)
 	if err != nil {
 		return nil, err
@@ -165,16 +173,20 @@ func (c *Client) Create(obj map[string]interface{}) (map[string]interface{}, err
 }
 
 // Get returns an object given its kind, name and namespace
-func (c *Client) Get(kind string, name string, namespace string) (map[string]interface{}, error) {
+func (c *Client) Get(kind string, name string, namespace string, options *metav1.GetOptions) (map[string]interface{}, error) {
 	resource, err := c.getResource(kind, namespace)
 	if err != nil {
 		return nil, err
 	}
 
+	if options == nil {
+		options = &metav1.GetOptions{}
+	}
+
 	resp, err := resource.Get(
 		c.ctx,
 		name,
-		metav1.GetOptions{},
+		*options,
 	)
 	if err != nil {
 		return nil, err
@@ -183,13 +195,17 @@ func (c *Client) Get(kind string, name string, namespace string) (map[string]int
 }
 
 // List returns a list of objects given its kind and namespace
-func (c *Client) List(kind string, namespace string) ([]map[string]interface{}, error) {
+func (c *Client) List(kind string, namespace string, options *metav1.ListOptions) ([]map[string]interface{}, error) {
 	resource, err := c.getResource(kind, namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := resource.List(c.ctx, metav1.ListOptions{})
+	if options == nil {
+		options = &metav1.ListOptions{}
+	}
+
+	resp, err := resource.List(c.ctx, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -202,18 +218,23 @@ func (c *Client) List(kind string, namespace string) ([]map[string]interface{}, 
 }
 
 // Delete deletes an object given its kind, name and namespace
-func (c *Client) Delete(kind string, name string, namespace string) error {
+func (c *Client) Delete(kind string, name string, namespace string, options *metav1.DeleteOptions) error {
 	resource, err := c.getResource(kind, namespace)
 	if err != nil {
 		return err
 	}
-	err = resource.Delete(c.ctx, name, metav1.DeleteOptions{})
+
+	if options == nil {
+		options = &metav1.DeleteOptions{}
+	}
+
+	err = resource.Delete(c.ctx, name, *options)
 
 	return err
 }
 
 // Update updates a resource in a kubernetes cluster from an object with its specification
-func (c *Client) Update(obj map[string]interface{}) (map[string]interface{}, error) {
+func (c *Client) Update(obj map[string]interface{}, options *metav1.UpdateOptions) (map[string]interface{}, error) {
 	uObj := &unstructured.Unstructured{
 		Object: obj,
 	}
@@ -228,10 +249,14 @@ func (c *Client) Update(obj map[string]interface{}) (map[string]interface{}, err
 		return nil, err
 	}
 
+	if options == nil {
+		options = &metav1.UpdateOptions{}
+	}
+
 	resp, err := resource.Update(
 		c.ctx,
 		uObj,
-		metav1.UpdateOptions{},
+		*options,
 	)
 	if err != nil {
 		return nil, err
@@ -247,13 +272,13 @@ func (c *Client) Structured() StructuredOperations {
 }
 
 // Creates a resources defined in the runtime object provided as input
-func (s *structured) Create(obj interface{}) (interface{}, error) {
+func (s *structured) Create(obj interface{}, options *metav1.CreateOptions) (interface{}, error) {
 	uObj, err := utils.RuntimeToGeneric(&obj)
 	if err != nil {
 		return nil, err
 	}
 
-	created, err := s.client.Create(uObj)
+	created, err := s.client.Create(uObj, options)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +293,8 @@ func (s *structured) Create(obj interface{}) (interface{}, error) {
 	return result.Elem().Interface(), nil
 }
 
-func (s *structured) Get(kind string, name string, namespace string, obj interface{}) error {
-	gObj, err := s.client.Get(kind, name, namespace)
+func (s *structured) Get(kind string, name string, namespace string, obj interface{}, options *metav1.GetOptions) error {
+	gObj, err := s.client.Get(kind, name, namespace, options)
 	if err != nil {
 		return err
 	}
@@ -277,17 +302,17 @@ func (s *structured) Get(kind string, name string, namespace string, obj interfa
 	return utils.GenericToRuntime(gObj, obj)
 }
 
-func (s *structured) Delete(kind string, name string, namespace string) error {
-	return s.client.Delete(kind, name, namespace)
+func (s *structured) Delete(kind string, name string, namespace string, options *metav1.DeleteOptions) error {
+	return s.client.Delete(kind, name, namespace, options)
 }
 
-func (s *structured) List(kind string, namespace string, objList interface{}) error {
+func (s *structured) List(kind string, namespace string, objList interface{}, options *metav1.ListOptions) error {
 	objListType := reflect.ValueOf(objList).Elem().Kind().String()
 	if objListType != reflect.Slice.String() {
 		return fmt.Errorf("must provide an slice to return results but %s received", objListType)
 	}
 
-	list, err := s.client.List(kind, namespace)
+	list, err := s.client.List(kind, namespace, options)
 	if err != nil {
 		return err
 	}
@@ -308,13 +333,13 @@ func (s *structured) List(kind string, namespace string, objList interface{}) er
 	return nil
 }
 
-func (s *structured) Update(obj interface{}) (interface{}, error) {
+func (s *structured) Update(obj interface{}, options *metav1.UpdateOptions) (interface{}, error) {
 	uObj, err := utils.RuntimeToGeneric(&obj)
 	if err != nil {
 		return nil, err
 	}
 
-	updated, err := s.client.Update(uObj)
+	updated, err := s.client.Update(uObj, options)
 	if err != nil {
 		return nil, err
 	}

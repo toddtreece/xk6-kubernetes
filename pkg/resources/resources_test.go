@@ -136,7 +136,7 @@ func TestCreate(t *testing.T) {
 			fake, _ := testutils.NewFakeDynamic()
 			c := NewFromClient(context.TODO(), fake).WithMapper(&testutils.FakeRESTMapper{})
 
-			created, err := c.Create(tc.obj)
+			created, err := c.Create(tc.obj, nil)
 			if err != nil {
 				t.Errorf("failed %v", err)
 				return
@@ -226,13 +226,13 @@ func TestApply(t *testing.T) {
 				t.Errorf("failed %v", err)
 				return
 			}
-			err = c.Apply(tc.manifest)
+			err = c.Apply(tc.manifest, nil)
 			if err != nil {
 				t.Errorf("failed %v", err)
 				return
 			}
 
-			obj, err := c.Get(tc.kind, tc.name, tc.ns)
+			obj, err := c.Get(tc.kind, tc.name, tc.ns, nil)
 			if err != nil {
 				t.Errorf("failed %v", err)
 				return
@@ -262,7 +262,7 @@ func TestUpdate(t *testing.T) {
 		"phase": string(corev1.PodFailed),
 	}
 
-	updated, err := c.Update(pod)
+	updated, err := c.Update(pod, nil)
 	if err != nil {
 		t.Errorf("failed %v", err)
 		return
@@ -323,7 +323,7 @@ func TestDelete(t *testing.T) {
 				return
 			}
 
-			err = c.Delete(tc.kind, tc.name, tc.ns)
+			err = c.Delete(tc.kind, tc.name, tc.ns, nil)
 			if err != nil {
 				t.Errorf("failed %v", err)
 				return
@@ -391,7 +391,7 @@ func TestGet(t *testing.T) {
 				return
 			}
 
-			obj, err := c.Get(tc.kind, tc.name, tc.ns)
+			obj, err := c.Get(tc.kind, tc.name, tc.ns, nil)
 			if err != nil {
 				t.Errorf("failed %v", err)
 				return
@@ -466,7 +466,7 @@ func TestList(t *testing.T) {
 				return
 			}
 
-			list, err := c.List(tc.kind, tc.ns)
+			list, err := c.List(tc.kind, tc.ns, nil)
 			if err != nil {
 				t.Errorf("failed %v", err)
 				return
@@ -487,7 +487,7 @@ func TestStructuredCreate(t *testing.T) {
 	c := NewFromClient(context.TODO(), fake).WithMapper(&testutils.FakeRESTMapper{})
 
 	pod := buildPod()
-	created, err := c.Structured().Create(*pod)
+	created, err := c.Structured().Create(*pod, nil)
 	if err != nil {
 		t.Errorf("failed %v", err)
 		return
@@ -510,7 +510,7 @@ func TestStructuredGet(t *testing.T) {
 	}
 
 	pod := &corev1.Pod{}
-	err = c.Structured().Get("Pod", "busybox", "testns", pod)
+	err = c.Structured().Get("Pod", "busybox", "testns", pod, nil)
 	if err != nil {
 		t.Errorf("failed %v", err)
 		return
@@ -532,7 +532,7 @@ func TestStructuredList(t *testing.T) {
 	}
 
 	podList := []corev1.Pod{}
-	err = c.Structured().List("Pod", "testns", &podList)
+	err = c.Structured().List("Pod", "testns", &podList, nil)
 	if err != nil {
 		t.Errorf("failed %v", err)
 		return
@@ -559,7 +559,7 @@ func TestStructuredDelete(t *testing.T) {
 		return
 	}
 
-	err = c.Structured().Delete("Pod", "busybox", "testns")
+	err = c.Structured().Delete("Pod", "busybox", "testns", nil)
 	if err != nil {
 		t.Errorf("failed %v", err)
 		return
@@ -578,7 +578,7 @@ func TestStructuredUpdate(t *testing.T) {
 
 	// change status
 	pod.Status.Phase = corev1.PodFailed
-	updated, err := c.Structured().Update(*pod)
+	updated, err := c.Structured().Update(*pod, nil)
 	if err != nil {
 		t.Errorf("failed %v", err)
 		return

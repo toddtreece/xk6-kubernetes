@@ -19,7 +19,7 @@ type PodHelper interface {
 func (h *helpers) WaitPodRunning(name string, timeout uint) (bool, error) {
 	return utils.Retry(time.Duration(timeout)*time.Second, time.Second, func() (bool, error) {
 		pod := &corev1.Pod{}
-		err := h.client.Structured().Get("Pod", name, h.namespace, pod)
+		err := h.client.Structured().Get("Pod", name, h.namespace, pod, nil)
 		if errors.IsNotFound(err) {
 			return false, nil
 		}

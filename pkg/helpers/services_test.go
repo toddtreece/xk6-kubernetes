@@ -200,7 +200,7 @@ func Test_WaitServiceReady(t *testing.T) {
 				}
 				time.Sleep(tc.delay)
 
-				_, e := client.Structured().Update(tc.updated)
+				_, e := client.Structured().Update(tc.updated, nil)
 				if e != nil {
 					t.Errorf("error updating endpoint: %v", e)
 				}
@@ -269,7 +269,7 @@ func Test_GetServiceIP(t *testing.T) {
 			h := NewHelper(context.TODO(), client, "default")
 
 			svc := buildService()
-			_, err := client.Structured().Create(svc)
+			_, err := client.Structured().Create(svc, nil)
 			if err != nil {
 				t.Errorf("unexpected error creating service: %v", err)
 				return
@@ -278,7 +278,7 @@ func Test_GetServiceIP(t *testing.T) {
 			go func(tc TestCase, svc corev1.Service) {
 				time.Sleep(tc.delay)
 				svc.Status.LoadBalancer.Ingress = tc.updated
-				_, e := client.Structured().Update(svc)
+				_, e := client.Structured().Update(svc, nil)
 				if e != nil {
 					t.Errorf("error updating service: %v", e)
 				}

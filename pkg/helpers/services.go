@@ -23,7 +23,7 @@ type ServiceHelper interface {
 func (h *helpers) WaitServiceReady(service string, timeout uint) (bool, error) {
 	return utils.Retry(time.Duration(timeout)*time.Second, time.Second, func() (bool, error) {
 		ep := &corev1.Endpoints{}
-		err := h.client.Structured().Get("Endpoint", service, h.namespace, ep)
+		err := h.client.Structured().Get("Endpoint", service, h.namespace, ep, nil)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -45,7 +45,7 @@ func (h *helpers) GetExternalIP(service string, timeout uint) (string, error) {
 	addr := ""
 	_, err := utils.Retry(time.Duration(timeout)*time.Second, time.Second, func() (bool, error) {
 		svc := &corev1.Service{}
-		err := h.client.Structured().Get("Service", service, h.namespace, svc)
+		err := h.client.Structured().Get("Service", service, h.namespace, svc, nil)
 		if err != nil {
 			return false, fmt.Errorf("failed to access service: %w", err)
 		}

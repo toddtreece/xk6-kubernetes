@@ -87,7 +87,7 @@ func TestPods_Wait(t *testing.T) {
 			client := resources.NewFromClient(context.TODO(), fake).WithMapper(&testutils.FakeRESTMapper{})
 			h := NewHelper(context.TODO(), client, testNamespace)
 			pod := buildPod()
-			_, err := client.Structured().Create(pod)
+			_, err := client.Structured().Create(pod, nil)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
@@ -96,7 +96,7 @@ func TestPods_Wait(t *testing.T) {
 			go func(tc TestCase) {
 				pod.Status.Phase = tc.status
 				time.Sleep(tc.delay)
-				_, e := client.Structured().Update(pod)
+				_, e := client.Structured().Update(pod, nil)
 				if e != nil {
 					t.Errorf("unexpected error: %v", e)
 					return
